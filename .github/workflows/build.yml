@@ -1,0 +1,17 @@
+name: macOS build and tests
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test the renderer and saved views
+        run: swift run -c release MandelbrotChecks
+      - name: Build native application
+        run: ./scripts/build-app.sh
+      - name: Package app
+        run: ditto -c -k --keepParent build/Mandelbrot.app build/Mandelbrot-macOS.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mandelbrot-macOS
+          path: build/Mandelbrot-macOS.zip

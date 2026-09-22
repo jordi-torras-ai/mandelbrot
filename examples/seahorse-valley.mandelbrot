@@ -1,0 +1,20 @@
+{
+  "export" : {
+    "format" : "png",
+    "height" : 2160,
+    "jpegQuality" : 0.95,
+    "supersampling" : true,
+    "width" : 3840
+  },
+  "version" : 1,
+  "view" : {
+    "centerX" : -0.748,
+    "centerY" : 0.102,
+    "colorPeriod" : 120,
+    "iterations" : 1600,
+    "palette" : "midnight",
+    "span" : 0.018
+  },
+  "windowHeight" : 900,
+  "windowWidth" : 1360
+}
