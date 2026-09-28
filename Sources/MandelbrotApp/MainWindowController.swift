@@ -75,10 +75,13 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         }
         inspector.onApplyCoordinates = { [weak self] x, y, span in
             guard let self else { return }
-            guard let x = Double(x), let y = Double(y), let span = Double(span) else {
+            guard let preciseX = DoubleDouble(x), let preciseY = DoubleDouble(y), let span = Double(span) else {
                 self.showError(message: "Enter a number for each coordinate and span. Scientific notation, such as 1e-6, is supported."); return
             }
-            var next = self.state; next.centerX = x; next.centerY = y; next.span = span
+            var next = self.state; next.span = span
+            // Fields show rounded coordinates; keep the exact center for any field left unedited.
+            if x != InspectorView.coordinate(self.state.preciseCenterX, span: self.state.span) { next.preciseCenterX = preciseX }
+            if y != InspectorView.coordinate(self.state.preciseCenterY, span: self.state.span) { next.preciseCenterY = preciseY }
             do { self.change(to: try next.validated()); self.window?.makeFirstResponder(canvas) }
             catch { self.showError(error) }
         }
@@ -105,7 +108,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
     func updateInterface() {
         root.canvas.viewState = state
         root.inspector.update(view: state, history: history, export: exportSettings)
-        root.centerLabel.stringValue = String(format: "CENTER  %.10g, %.10g", state.centerX, state.centerY)
+        root.centerLabel.stringValue = "CENTER  \(state.preciseCenterX.formatted(tolerance: state.span * 1e-4)), \(state.preciseCenterY.formatted(tolerance: state.span * 1e-4))"
         window?.isDocumentEdited = savedSnapshot.map { $0.view != state || $0.export != exportSettings } ?? (state != ViewState())
     }
     func requestRender() {

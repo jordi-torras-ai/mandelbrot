@@ -40,7 +40,7 @@ The local app is ad-hoc signed. Public distribution will need an appropriate rel
 | Choose window size | Window size or `⌥⌘R` |
 | Full screen | `⌃⌘F` |
 
-The inspector offers five starting places, exact real/imaginary center coordinates, horizontal span, three blue palettes, color spread, and detail settings from 400 to 20,000 iterations. At deep zooms, increase detail if the boundary looks solid. You can enter scientific notation in coordinate fields, then click **Go to coordinates**.
+The inspector offers five starting places, exact real/imaginary center coordinates, horizontal span, eight palettes (Midnight, Electric, Arctic, Ember, Aurora, Sunset, Nebula, Graphite), color spread, and detail settings from 400 to 20,000 iterations. At deep zooms, increase detail if the boundary looks solid. You can enter scientific notation in coordinate fields, then click **Go to coordinates**.
 
 Each drag, scroll, or pinch gesture is one history entry. Navigation history is kept for the current session, up to 150 entries. Save a view before closing the app to keep your place.
 
@@ -58,7 +58,7 @@ Exports render in the background with progress and cancellation, then write the 
 
 `.mandelbrot` files are portable, readable JSON. They retain:
 
-- Center coordinates and horizontal span at full double precision
+- Center coordinates at double-double precision (about 32 digits) and horizontal span
 - Iteration limit, palette, and color spread
 - Export size, format, JPEG quality, and smooth-edge setting
 - Window content dimensions
@@ -67,9 +67,9 @@ Open a view from the app or double-click its file in Finder. Loading restores it
 
 ## Rendering and precision
 
-The engine uses double-precision escape-time iteration, analytic tests for the main cardioid and period-two bulb, smooth coloring, and parallel row tiles. Interaction immediately reprojects the previous frame, renders a quick preview, then refines at the window's backing resolution (up to six megapixels). Obsolete renders cancel cooperatively.
+The engine uses escape-time iteration in double precision, switching to double-double arithmetic (about 32 significant digits) once the span drops below `1e-10`. It also uses analytic tests for the main cardioid and period-two bulb, smooth coloring, and parallel row tiles. Interaction immediately reprojects the previous frame, renders a quick preview, then refines at the window's backing resolution (up to six megapixels). Obsolete renders cancel cooperatively.
 
-Horizontal span is limited to `1e-11`–`12`, giving a maximum magnification of approximately 340 billion times relative to the initial view. This is a practical double-precision explorer; arbitrary-precision and perturbation rendering are not implemented. Deep views and large exports take more time, especially with high iteration limits or smooth edges enabled.
+Horizontal span is limited to `1e-25`–`12`, giving a maximum magnification of approximately 3.4 × 10²⁵ relative to the initial view. Double-double is about 7–8× slower than double precision on the same view, so views past `1e-10` render noticeably more slowly. Deep views also need more detail: around `1e-20`, many regions only resolve at 12,800–20,000 iterations. Arbitrary-precision and perturbation rendering are not implemented. Deep views and large exports take more time, especially with high iteration limits or smooth edges enabled.
 
 ![Seahorse valley](docs/seahorse-valley.png)
 
@@ -80,7 +80,7 @@ swift run -c release MandelbrotChecks
 ./scripts/build-app.sh
 ```
 
-The standalone test runner works with Command Line Tools without requiring XCTest or a full Xcode installation. It checks known set membership, conjugate symmetry, anchored zoom, aspect-correct panning, history branching, saved-view round trips and precision, invalid input, export limits, actual PNG/JPEG decoding, deterministic rendering, and cancellation.
+The standalone test runner works with Command Line Tools without requiring XCTest or a full Xcode installation. It checks known set membership, conjugate symmetry, anchored zoom, aspect-correct panning, history branching, saved-view round trips and precision, double-double parsing and arithmetic, deep-zoom rendering against a 50-digit reference, older-file compatibility, invalid input, export limits, actual PNG/JPEG decoding, deterministic rendering, and cancellation.
 
 Render a reproducible sample with the same production engine:
 

@@ -1,7 +1,8 @@
 import Foundation
+import FractalEngine
 
 public enum Palette: String, Codable, CaseIterable {
-    case midnight, electric, arctic
+    case midnight, electric, arctic, ember, aurora, sunset, nebula, graphite
     public var title: String { rawValue.capitalized }
     public var index: Int32 { Int32(Self.allCases.firstIndex(of: self)!) }
 }
@@ -9,18 +10,50 @@ public enum Palette: String, Codable, CaseIterable {
 public struct ViewState: Codable, Equatable {
     public var centerX: Double = -0.6
     public var centerY: Double = 0
+    /// Low-order parts of the center. Together with `centerX`/`centerY` they form double-double values,
+    /// so the center stays exact to about 32 digits at deep zoom. Zero for most shallow views.
+    public var centerXLow: Double = 0
+    public var centerYLow: Double = 0
     /// Horizontal extent of the complex plane. Vertical extent follows the image aspect ratio.
     public var span: Double = 3.4
     public var iterations: Int = 800
     public var colorPeriod: Double = 120
     public var palette: Palette = .midnight
-    public static let minimumSpan = 1e-11
+    /// Double-double resolves about 1e-32 near the set; this leaves room for roughly a thousand
+    /// distinguishable steps per pixel even on an 8K export.
+    public static let minimumSpan = 1e-25
     public static let maximumSpan = 12.0
+    /// Spans below this render with double-double arithmetic (slower, but far more precise).
+    public static let doubleDoubleSpan = MDB_DOUBLE_DOUBLE_SPAN
     public init() {}
     public var zoom: Double { 3.4 / span }
+    public var usesDoubleDouble: Bool { span < Self.doubleDoubleSpan }
+
+    public var preciseCenterX: DoubleDouble {
+        get { DoubleDouble(hi: centerX, lo: centerXLow) }
+        set { centerX = newValue.hi; centerXLow = newValue.lo }
+    }
+    public var preciseCenterY: DoubleDouble {
+        get { DoubleDouble(hi: centerY, lo: centerYLow) }
+        set { centerY = newValue.hi; centerYLow = newValue.lo }
+    }
+
+    // Files saved before double-double support have no low parts.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        centerX = try container.decode(Double.self, forKey: .centerX)
+        centerY = try container.decode(Double.self, forKey: .centerY)
+        centerXLow = try container.decodeIfPresent(Double.self, forKey: .centerXLow) ?? 0
+        centerYLow = try container.decodeIfPresent(Double.self, forKey: .centerYLow) ?? 0
+        span = try container.decode(Double.self, forKey: .span)
+        iterations = try container.decode(Int.self, forKey: .iterations)
+        colorPeriod = try container.decode(Double.self, forKey: .colorPeriod)
+        palette = try container.decode(Palette.self, forKey: .palette)
+    }
 
     public func validated() throws -> Self {
         guard centerX.isFinite, centerY.isFinite, abs(centerX) <= 10, abs(centerY) <= 10,
+              centerXLow.isFinite, centerYLow.isFinite, centerX + centerXLow == centerX, centerY + centerYLow == centerY,
               span.isFinite, (Self.minimumSpan...Self.maximumSpan).contains(span),
               (100...20000).contains(iterations), colorPeriod.isFinite, (20...500).contains(colorPeriod) else {
             throw MandelbrotError.invalidView
@@ -32,17 +65,21 @@ public struct ViewState: Codable, Equatable {
     public mutating func zoom(by factor: Double, anchorX: Double = 0.5, anchorY: Double = 0.5, aspect: Double = 1) {
         guard factor.isFinite, factor > 0, aspect.isFinite, aspect > 0 else { return }
         let nextSpan = min(Self.maximumSpan, max(Self.minimumSpan, span / factor))
-        centerX += (anchorX - 0.5) * (span - nextSpan)
-        centerY += (0.5 - anchorY) * (span - nextSpan) / aspect
-        centerX = min(10, max(-10, centerX))
-        centerY = min(10, max(-10, centerY))
+        move(by: (anchorX - 0.5) * (span - nextSpan), (0.5 - anchorY) * (span - nextSpan) / aspect)
         span = nextSpan
     }
 
     public mutating func pan(fractionX: Double, fractionY: Double, aspect: Double) {
         guard aspect > 0, aspect.isFinite, fractionX.isFinite, fractionY.isFinite else { return }
-        centerX = min(10, max(-10, centerX - fractionX * span))
-        centerY = min(10, max(-10, centerY + fractionY * span / aspect))
+        move(by: -fractionX * span, fractionY * span / aspect)
+    }
+
+    /// Offsets are small relative to the center at deep zoom, so they are added in double-double.
+    private mutating func move(by dx: Double, _ dy: Double) {
+        preciseCenterX = preciseCenterX + DoubleDouble(dx)
+        preciseCenterY = preciseCenterY + DoubleDouble(dy)
+        if abs(centerX) > 10 { preciseCenterX = DoubleDouble(centerX < 0 ? -10 : 10) }
+        if abs(centerY) > 10 { preciseCenterY = DoubleDouble(centerY < 0 ? -10 : 10) }
     }
 }
 

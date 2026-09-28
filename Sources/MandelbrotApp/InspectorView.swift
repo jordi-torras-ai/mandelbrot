@@ -80,7 +80,7 @@ final class InspectorView: FlippedView {
         put(Theme.label("Palette", size: 11, color: Theme.secondary), 0, 585, 64, 20)
         palette.addItems(withTitles: Palette.allCases.map(\.title))
         palette.target = self; palette.action = #selector(paletteChanged)
-        palette.setAccessibilityLabel("Blue color palette")
+        palette.setAccessibilityLabel("Color palette")
         put(palette, 68, 579, w - 65, 28)
         put(swatch, 0, 620, w, 14)
         put(Theme.label("Color spread", size: 11, color: Theme.secondary), 0, 651, 120, 20)
@@ -123,10 +123,10 @@ final class InspectorView: FlippedView {
     }
     func update(view: ViewState, history: ViewHistory, export: ExportSettings) {
         let zoom = view.zoom
-        zoomLabel.stringValue = zoom < 1000 ? String(format: "%.2f×", zoom) : zoom < 1_000_000 ? String(format: "%.1fK×", zoom / 1000) : zoom < 1_000_000_000 ? String(format: "%.2fM×", zoom / 1_000_000) : String(format: "%.2fB×", zoom / 1_000_000_000)
+        zoomLabel.stringValue = zoom < 1000 ? String(format: "%.2f×", zoom) : zoom < 1_000_000 ? String(format: "%.1fK×", zoom / 1000) : zoom < 1_000_000_000 ? String(format: "%.2fM×", zoom / 1_000_000) : zoom < 1e12 ? String(format: "%.2fB×", zoom / 1_000_000_000) : String(format: "%.2e×", zoom)
         zoomLabel.toolTip = String(format: "%.12g× magnification", zoom)
-        realField.stringValue = String(view.centerX)
-        imaginaryField.stringValue = String(view.centerY)
+        realField.stringValue = Self.coordinate(view.preciseCenterX, span: view.span)
+        imaginaryField.stringValue = Self.coordinate(view.preciseCenterY, span: view.span)
         spanField.stringValue = String(view.span)
         let values = [400, 800, 1600, 3200, 6400, 12800, 20000]
         if detail.numberOfItems > values.count { detail.removeItem(at: values.count) }
@@ -140,6 +140,9 @@ final class InspectorView: FlippedView {
             destination.selectItem(at: index)
         } else { destination.selectItem(at: Destination.all.count) }
         exportSummary.stringValue = "\(export.width) × \(export.height) · \(export.format.rawValue.uppercased())"
-        precisionLabel.stringValue = view.span <= ViewState.minimumSpan * 1.01 ? "Maximum zoom reached · 64-bit precision" : "Double precision · 64-bit"
+        let precision = view.usesDoubleDouble ? "Double-double precision · 128-bit" : "Double precision · 64-bit"
+        precisionLabel.stringValue = view.span <= ViewState.minimumSpan * 1.01 ? "Maximum zoom reached · 128-bit" : precision
     }
+    /// Enough digits to place the center well within a pixel, even on an 8K export, and no more.
+    static func coordinate(_ value: DoubleDouble, span: Double) -> String { value.formatted(tolerance: span * 1e-9) }
 }

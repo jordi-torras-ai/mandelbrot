@@ -64,7 +64,12 @@ final class PaletteSwatch: NSView {
         let colors: [[NSColor]] = [
             [.black, NSColor(red: 0.01, green: 0.10, blue: 0.18, alpha: 1), NSColor(red: 0.19, green: 0.33, blue: 0.44, alpha: 1), NSColor(red: 0.87, green: 0.94, blue: 0.98, alpha: 1)],
             [.black, NSColor(red: 0.01, green: 0.06, blue: 0.18, alpha: 1), NSColor(red: 0.09, green: 0.34, blue: 0.64, alpha: 1), NSColor(red: 0.87, green: 0.95, blue: 1, alpha: 1)],
-            [.black, NSColor(red: 0.01, green: 0.09, blue: 0.14, alpha: 1), NSColor(red: 0.12, green: 0.38, blue: 0.46, alpha: 1), NSColor(red: 0.89, green: 0.98, blue: 0.98, alpha: 1)]
+            [.black, NSColor(red: 0.01, green: 0.09, blue: 0.14, alpha: 1), NSColor(red: 0.12, green: 0.38, blue: 0.46, alpha: 1), NSColor(red: 0.89, green: 0.98, blue: 0.98, alpha: 1)],
+            [.black, NSColor(red: 0.50, green: 0.08, blue: 0.07, alpha: 1), NSColor(red: 0.82, green: 0.28, blue: 0.08, alpha: 1), NSColor(red: 1, green: 0.95, blue: 0.80, alpha: 1)],
+            [.black, NSColor(red: 0.11, green: 0.08, blue: 0.31, alpha: 1), NSColor(red: 0.14, green: 0.73, blue: 0.58, alpha: 1), NSColor(red: 0.93, green: 1, blue: 0.93, alpha: 1)],
+            [.black, NSColor(red: 0.24, green: 0.05, blue: 0.32, alpha: 1), NSColor(red: 0.89, green: 0.32, blue: 0.32, alpha: 1), NSColor(red: 1, green: 0.91, blue: 0.69, alpha: 1)],
+            [.black, NSColor(red: 0.36, green: 0.09, blue: 0.53, alpha: 1), NSColor(red: 0.66, green: 0.24, blue: 0.80, alpha: 1), NSColor(red: 1, green: 0.91, blue: 1, alpha: 1)],
+            [.black, NSColor(red: 0.09, green: 0.09, blue: 0.10, alpha: 1), NSColor(red: 0.43, green: 0.43, blue: 0.47, alpha: 1), NSColor(red: 0.96, green: 0.96, blue: 0.97, alpha: 1)]
         ]
         NSGradient(colors: colors[selected])?.draw(in: NSBezierPath(roundedRect: bounds, xRadius: 5, yRadius: 5), angle: 0)
     }

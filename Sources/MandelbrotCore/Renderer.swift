@@ -44,7 +44,8 @@ public enum Renderer {
             guard !cancellation.isCancelled else { return }
             let first = tile * tileRows
             mdb_render_rows(pixels, Int32(width), Int32(height), Int32(first), Int32(min(height, first + tileRows)),
-                            view.centerX, view.centerY, view.span, Int32(view.iterations), view.colorPeriod,
+                            view.centerX, view.centerXLow, view.centerY, view.centerYLow,
+                            view.span, Int32(view.iterations), view.colorPeriod,
                             view.palette.index, Int32(samples), cancellation.pointer)
             if let progress {
                 lock.lock()

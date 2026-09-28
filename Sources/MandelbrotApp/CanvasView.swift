@@ -54,8 +54,8 @@ final class CanvasView: FlippedView {
             let scale = bounds.width / viewState.span
             let imageWidth = imageState.span * scale
             let imageHeight = imageWidth * CGFloat(image.height) / CGFloat(image.width)
-            let x = bounds.midX + (imageState.centerX - viewState.centerX) * scale - imageWidth / 2
-            let y = bounds.midY - (imageState.centerY - viewState.centerY) * scale - imageHeight / 2
+            let x = bounds.midX + (imageState.preciseCenterX - viewState.preciseCenterX).hi * scale - imageWidth / 2
+            let y = bounds.midY - (imageState.preciseCenterY - viewState.preciseCenterY).hi * scale - imageHeight / 2
             context.saveGState()
             context.translateBy(x: x, y: y + imageHeight)
             context.scaleBy(x: 1, y: -1)

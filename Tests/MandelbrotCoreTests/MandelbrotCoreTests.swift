@@ -148,4 +148,80 @@ final class MandelbrotCoreTests {
         expectNil(result)
         expectTrue(live.isCancelled)
     }
+
+    func testDoubleDoubleParsingFormattingAndArithmetic() throws {
+        let text = "-0.743643887037158704752191506114774"
+        let value = try unwrap(DoubleDouble(text))
+        expectEqual(value.hi, -0.7436438870371587)
+        expectEqual(value.lo, -3.628952515063387e-17, accuracy: 1e-31)
+        // 33 digits is slightly more than double-double holds, so compare values rather than strings.
+        expectEqual(try unwrap(DoubleDouble(value.formatted())), value)
+        expectEqual(String(value.formatted().prefix(33)), String(text.prefix(33)))
+        expectEqual(value.formatted(tolerance: 1e-9), "-0.743643887")
+        expectEqual(try unwrap(DoubleDouble("-0.6")).formatted(tolerance: 1e-12), "-0.6")
+        expectEqual(try unwrap(DoubleDouble("1.25e-20")).formatted(), "1.25e-20")
+        expectEqual(try unwrap(DoubleDouble("+42")).formatted(), "42")
+        expectEqual(DoubleDouble(0).formatted(), "0")
+        for invalid in ["", "-", ".", "abc", "1.2.3", "1e", "1e5000", "0x10"] { expectNil(DoubleDouble(invalid)) }
+        // 1/3 * 3 is exact to double-double precision, far beyond what a double can tell apart.
+        let third = DoubleDouble(1) / DoubleDouble(3)
+        expectEqual(((third * DoubleDouble(3)) - DoubleDouble(1)).hi, 0, accuracy: 1e-31)
+        expectEqual((value + DoubleDouble(1e-25) - value).hi, 1e-25, accuracy: 1e-31)
+    }
+
+    func testDoubleDoubleEscapeMatchesDoubleAndResolvesDeepDetail() throws {
+        for x in stride(from: -2.1, through: 0.8, by: 0.23) {
+            for y in stride(from: -1.2, through: 1.2, by: 0.19) {
+                expectEqual(mdb_escape_dd(x, 0, y, 0, 1200), mdb_escape(x, y, 1200), accuracy: 1e-6)
+            }
+        }
+        // Checked against a 50-digit decimal reference: this point escapes after 17,115 iterations.
+        let deepX = try unwrap(DoubleDouble("-0.743643887037158704752191506114774")) + DoubleDouble(-13 * 3e-28)
+        let deepY = try unwrap(DoubleDouble("0.131825904205311970493132056385139")) + DoubleDouble(13 * 3e-28 * 0.7)
+        expectEqual(mdb_escape_dd(deepX.hi, deepX.lo, deepY.hi, deepY.lo, 20000), 17113.53, accuracy: 0.05)
+
+        var view = ViewState()
+        view.preciseCenterX = try unwrap(DoubleDouble("-0.743643887037158704752191506114774"))
+        view.preciseCenterY = try unwrap(DoubleDouble("0.131825904205311970493132056385139"))
+        view.span = 1e-21; view.iterations = 12800
+        expectTrue(view.usesDoubleDouble)
+        let image = try unwrap(Renderer.render(view: view, width: 48, height: 32)).image
+        let bytes = try unwrap(image.dataProvider?.data) as Data
+        let colors = Set(stride(from: 0, to: bytes.count, by: 4).map { bytes[$0..<$0 + 3] })
+        // A double-only render collapses every pixel to one point, and so one color.
+        expectGreater(colors.count, 200)
+    }
+
+    func testDeepZoomAndPanStayExactAndOlderFilesStillOpen() throws {
+        var view = ViewState()
+        view.preciseCenterX = try unwrap(DoubleDouble("-0.743643887037158704752191506114774"))
+        view.span = 1e-20
+        let start = view.preciseCenterX
+        let x = 0.23, aspect = 1.5
+        let anchored = view.preciseCenterX + DoubleDouble((x - 0.5) * view.span)
+        view.zoom(by: 1000, anchorX: x, anchorY: 0.5, aspect: aspect)
+        expectEqual((view.preciseCenterX + DoubleDouble((x - 0.5) * view.span) - anchored).hi, 0, accuracy: 1e-31)
+        view.pan(fractionX: 0.3, fractionY: 0, aspect: aspect)
+        view.pan(fractionX: -0.3, fractionY: 0, aspect: aspect)
+        view.zoom(by: 1 / 1000, anchorX: x, anchorY: 0.5, aspect: aspect)
+        expectEqual((view.preciseCenterX - start).hi, 0, accuracy: 1e-32)
+        view.zoom(by: 1e100)
+        expectEqual(view.span, ViewState.minimumSpan)
+        expectNoThrow(try view.validated())
+
+        let saved = SavedView(view: view, export: ExportSettings(), windowWidth: 1360, windowHeight: 900)
+        let decoded = try SavedView.decode(saved.encoded())
+        expectEqual(decoded.view.centerXLow.bitPattern, view.centerXLow.bitPattern)
+        expectEqual(decoded.view.preciseCenterX, view.preciseCenterX)
+
+        var json = try unwrap(JSONSerialization.jsonObject(with: saved.encoded()) as? [String: Any])
+        var old = try unwrap(json["view"] as? [String: Any])
+        old["centerXLow"] = nil; old["centerYLow"] = nil; json["view"] = old
+        let legacy = try SavedView.decode(JSONSerialization.data(withJSONObject: json))
+        expectEqual(legacy.view.centerX, view.centerX)
+        expectEqual(legacy.view.centerXLow, 0)
+
+        old["centerXLow"] = 1.0; json["view"] = old  // not a valid low part for this center
+        expectThrows(try SavedView.decode(JSONSerialization.data(withJSONObject: json)))
+    }
 }

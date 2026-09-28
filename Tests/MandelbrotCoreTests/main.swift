@@ -47,7 +47,10 @@ let tests: [(String, () throws -> Void)] = [
     ("Export size limits and 8K", suite.testRejectsOversizedExportAndAccepts8K),
     ("PNG and JPEG encoding", suite.testPNGAndJPEGAreRealImagesAtRequestedDimensions),
     ("Deterministic symmetric rendering", suite.testRenderingIsDeterministicAndVerticallySymmetric),
-    ("Live render cancellation", suite.testCancellationBeforeAndDuringRendering)
+    ("Live render cancellation", suite.testCancellationBeforeAndDuringRendering),
+    ("Double-double parsing and arithmetic", suite.testDoubleDoubleParsingFormattingAndArithmetic),
+    ("Double-double escape and deep detail", suite.testDoubleDoubleEscapeMatchesDoubleAndResolvesDeepDetail),
+    ("Deep zoom, pan, and file compatibility", suite.testDeepZoomAndPanStayExactAndOlderFilesStillOpen)
 ]
 for (name, run) in tests {
     let before = failures
